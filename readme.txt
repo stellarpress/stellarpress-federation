@@ -71,7 +71,7 @@ TBD
 
 == Changelog ==
 
-= 0.1.0 =
+= 1.0 =
 Release Date: 28 January 2018
 
 First version of the plugin
