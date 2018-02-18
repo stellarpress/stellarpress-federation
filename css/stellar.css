@@ -1,0 +1,12 @@
+.status {
+    font-style: italic;
+}
+.status-warn {
+    color: orange;
+}
+.status-error {
+    color: red;
+}
+.status-ok {
+    color: green;
+}

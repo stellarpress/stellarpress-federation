@@ -3,7 +3,7 @@
  * Plugin Name: StellarPress Federation
  * Plugin URI: https://stellarpress.org/federation/
  * Description: This plugin implements a simple Stellar Federation server within WordPress. Stellar address can be specified in the user profile. <em>This requires a blog hosted via HTTPS and in the root folder of the server!</em>
- * Version: 1.0
+ * Version: 1.1
  * Author: StellarPress
  * Author URI: https://stellarpress.org
  * License: GPL2
@@ -27,12 +27,24 @@
  */
 
 if (!defined('STELLARPRESS_FEDERATION_VERSION')) {
-  define('STELLARPRESS_FEDERATION_VERSION', '1.0');
+  define('STELLARPRESS_FEDERATION_VERSION', '1.1');
 }
 
+/**
+ * Class containing all functions for the StellarPress plugin,
+ * both admin UI and runtime functionality.
+ * 
+ * @since 1.0.0
+ */
 class StellarPress_Federation {
   /**
-   * constants for return HTTP status codes
+   * Constants for return HTTP status codes.
+   * 
+   * @since 1.0.0
+   * @var int HTTP_OK        HTTP status for everything OK.
+   * @var int HTTP_NOTFOUND  HTTP status for item not found.
+   * @var int HTTP_INVALID   HTTP status for invalid request.
+   * @var int HTTP_NOTIMPL   HTTP status for not (yet) implemented.
    */
   const HTTP_OK = 200;
   const HTTP_NOTFOUND = 404;
@@ -40,20 +52,29 @@ class StellarPress_Federation {
   const HTTP_NOTIMPL = 501;
 
   /**
-   * constants for return messages in Federation server
+   * Constants for return messages in Federation server.
+   * 
+   * @since 1.0.0
+   * @var string CODE_NOTFOUND  Text message for HTTP_NOTFOUND.
+   * @var string CODE_INVALID   Text message for HTTP_INVALID.
+   * @var string CODE_NOTIMPL   Text message for HTTP_NOTIMPL.
    */
   const CODE_NOTFOUND = "not_found";
   const CODE_INVALID = "invalid_request";
   const CODE_NOTIMPL = "not_implemented";
 
   /**
-   * Static property to hold the singleton
+   * Static property to hold the singleton.
+   * 
+   * @since 1.0.0
+   * @var StellarPress_Federation $instance  The singleton object.
    */
   static $instance = false;
   
   /**
-   * Constructor: register all hooks needed
+   * Constructor: register all hooks needed.
    *
+   * @since 1.0.0
    * @return void
    */
   private function __construct() {
@@ -64,13 +85,16 @@ class StellarPress_Federation {
     add_action('edit_user_profile', array($this, 'edit_profile'));
     add_action('personal_options_update', array($this, 'save_profile'));
     add_action('edit_user_profile_update', array($this, 'save_profile'));
+    // Add scripts for admin user page
+    add_action('admin_enqueue_scripts', array($this, 'add_admin_scripts'));
   }
 
   /**
    * Return the (one) instance of this class. If no instance exists
    * create one.
    *
-   * @return StellarPress_Federation
+   * @since 1.0.0
+   * @return StellarPress_Federation  The singleton object.
    */
   public static function getInstance() {
     if (!self::$instance) {
@@ -84,15 +108,14 @@ class StellarPress_Federation {
    * Federation server protocol.
    *
    * It is to be called early in the WordPress process, and will
-   * look for very specific URLs ('/.well-known', '.federation').
+   * look for very specific URLs (`/.well-known`, `.federation`).
    *
-   * 1. Check whether we shall return the 'stellar.toml' file
-   * More details:
-   * https://www.stellar.org/developers/guides/concepts/stellar-toml.html
-   * 2. Check whether we shall answer on Federation requests
-   * More details:
-   * https://www.stellar.org/developers/guides/concepts/federation.html
+   * 1. Check whether we shall return the `stellar.toml` file
+   * 2. Check whether we shall answer on _Federation_ requests
    *
+   * @since 1.0.0
+   * @link https://stellar.org/developers/guides/concepts/stellar-toml.html
+   * @link https://stellar.org/developers/guides/concepts/federation.html
    * @return void
    */
   public function federation_server() {
@@ -114,6 +137,8 @@ class StellarPress_Federation {
 
   /**
    * This helper function delivers the stellar.toml file to the client.
+   * 
+   * @since 1.0.0
    * @return void
    */
   function serve_stellar_toml() {
@@ -130,6 +155,8 @@ class StellarPress_Federation {
   /**
    * This helper function delivers the response from the Federation server.
    * It will exit the PHP execution.
+   * 
+   * @since 1.0.0
    */
   function serve_federation() {
     if (!isset($_GET['type']) || !isset($_GET['q'])) {
@@ -168,7 +195,8 @@ class StellarPress_Federation {
    * This helper functions checks the domain name against the
    * WordPress site_url.
    * 
-   * @return Boolean true if the domain name is matching the server
+   * @since 1.0.0
+   * @return boolean  `true` if the domain name is matching the server.
    */
   function is_domain_ok($domain) {
     // the domain must be in the site_url
@@ -178,10 +206,11 @@ class StellarPress_Federation {
   }
 
   /**
-   * This helper finds a user with a specific name & domain.
+   * This helper finds a user with a specific name and domain.
    * 
-   * @param name the name of the user
-   * @return String the stellar address, or false if not found
+   * @since 1.0.0
+   * @param  string $name  The name of the user.
+   * @return string|false  The stellar address, or `false` if not found.
    */
   function find_user($name) {
     $user_query = new WP_User_Query(
@@ -211,7 +240,10 @@ class StellarPress_Federation {
    * This helper function extracts the Stellar account from a WordPress user
    * object.
    * 
-   * @param user a user-id string for which the stellar address shall be extracted
+   * @since 1.0.0
+   * @param  string $user_id  User-id string for which the stellar address
+   *                          shall be extracted.
+   * @return string           The user's Stellar account.
    */
   function get_stellar_address($user_id) {
     return get_user_meta($user_id, 'stellar_address', true);
@@ -223,8 +255,9 @@ class StellarPress_Federation {
    * 
    * This function will exit further execution and set the status code.
    * 
-   * @param code    the HTTP status code to be used
-   * @param message text message as part of the result
+   * @since 1.0.0
+   * @param int    $code     The HTTP status code to be used.
+   * @param string $message  Text message as part of the result.
    */
   function exit_federation_error($code, $message) {
     switch($code) {
@@ -247,10 +280,10 @@ class StellarPress_Federation {
    * 
    * It will exit further execution and set the status code.
    * 
-   * @param account the Stellar account from the profile
-   * @param name    the name part of the Stellar address
-   * @param domain  the domain part of the Stellar address
-   * @return void
+   * @since 1.0.0
+   * @param string $account  The Stellar account from the profile.
+   * @param string $name     The name part of the Stellar address.
+   * @param string $domain   The domain part of the Stellar address.
    */
   function exit_federation_result($account, $name, $domain) {
     $rc = array();
@@ -261,10 +294,12 @@ class StellarPress_Federation {
 
   /**
    * This helper will send the JSON result and exit execution.
+   * 
    * It will also set the required headers for the Federation.
    *
-   * @param rc   an associative array to be sent as JSON
-   * @param code the HTTP status code to be used
+   * @since 1.0.0
+   * @param array $rc    An associative array to be sent as JSON.
+   * @param int   $code  The HTTP status code to be used.
    */
   function exit_federation($rc, $code) {
     // allow CORS as required by Stellar Federation protocol
@@ -277,8 +312,11 @@ class StellarPress_Federation {
   /**
    * This function adds a field for the Stellar address of a user
    * to the profile form.
+   * 
    * Based on https://wordpress.stackexchange.com/a/214723
-   * @param user a WPUser object
+   * 
+   * @since 1.0.0
+   * @param WPUser user  A WPUser object.
    * @return void
    */
 
@@ -292,18 +330,25 @@ class StellarPress_Federation {
         <th><label for="stellar_address"><?php _e("Stellar Address"); ?></label></th>
         <td>
           <input type="text" name="stellar_address" id="stellar_address" value="<?php echo esc_attr($stellar_address); ?>" class="regular-text" /><br />
-          <span class="description"><?php _e("Please enter your Stellar address (your public key, starting with 'G')."); ?></span>
+          <p class="description"><?php _e("Please enter your Stellar address (your public key, starting with 'G')."); ?></p>
+          <p class="status" id="stellarpress-check"></p>
         </td>
       </tr>
     </table>
+    <script>
+      stellarpressFederation.inform_into("<?php echo esc_attr($user->user_login); ?>", "<?php echo esc_attr($stellar_address); ?>", "stellarpress-check");
+    </script>
     <?php
   }
 
   /**
    * This function adds a field for the Stellar address of a user
    * into the database after being saved by the user.
+   * 
    * Based on https://wordpress.stackexchange.com/a/214723
-   * @param user_id a WordPress user id
+   * 
+   * @since 1.0.0
+   * @param string $user_id  A WordPress user id
    * @return void
    */
   function save_profile($user_id) {
@@ -311,6 +356,25 @@ class StellarPress_Federation {
       return false; 
     }
     update_user_meta($user_id, 'stellar_address', $_POST['stellar_address']);
+  }
+
+  /**
+   * This function is used to add JS and CSS files needed for
+   * the user admin page.
+   * 
+   * @since 1.1.0
+   * @param string $hook  Hook name used to identify admin page
+   * @return void
+   */
+  function add_admin_scripts($hook) {
+    if ($hook === 'profile.php' || $hook === 'user-edit.php') {
+      wp_enqueue_script('stellarsdk',
+        'https://cdnjs.cloudflare.com/ajax/libs/stellar-sdk/0.8.0/stellar-sdk.js');
+      wp_enqueue_script('stellarfederation',
+        plugins_url('js/stellar.js', __FILE__));
+      wp_enqueue_style('stellarcss',
+        plugins_url('css/stellar.css', __FILE__));
+    }
   }
 }
 
